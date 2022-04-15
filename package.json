@@ -1,0 +1,11 @@
+{
+  "name": "image-compression",
+  "version": "1.0.0",
+  "description": "Compresses images and resizes in a shopify like way",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "CC-BY-NC-ND-4.0"
+}
