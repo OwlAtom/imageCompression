@@ -4,8 +4,13 @@
   "description": "Compresses images and resizes in a shopify like way",
   "main": "index.js",
   "scripts": {
+    "watch": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "CC-BY-NC-ND-4.0"
+  "license": "CC-BY-NC-ND-4.0",
+  "dependencies": {
+    "express": "^4.17.3",
+    "sharp": "^0.30.3"
+  }
 }
