@@ -4,16 +4,8 @@ const app = express();
 const sharp = require("sharp");
 const fs = require("fs");
 
-// create a simple test
-app.get("/", (req, res) => {
-  res.send(
-    '<img src="http://localhost:3000/images/cat" style="margin-left:14%; margin-top:7%;">'
-  );
-});
-// for all requests to /images
-// and send it back
-// :image = filename without extension
-// /image/${fileName}?w=${width}&h=${height}&format={avif/webp/jpeg} automatically figures out what format is best/supported
+// /image/${fileName}?w=${width}&h=${height}&format={avif/webp/jpeg}
+// automatically figures out what format is best/supported
 // example: /image/cat?w=200&h=200&format=jpeg
 app.get("/images/:image", (req, res) => {
   // name on disk = width ? height ? format
@@ -90,10 +82,57 @@ app.get("/images/:image", (req, res) => {
   }
 });
 
+// a small test to see if images are being served in the correct format
+app.get("/", (req, res) => {
+  cleanUpImages();
+  res.send(
+    '<img src="http://localhost:3000/images/cat" style="margin-left:14%; margin-top:7%;">'
+  );
+});
+
+// todo make a small frontend to upload images
+// maybe a dropzone?
+// maybe auth with firebase?
+// and why not store the images in firebase?
+
+// if image server is on the internet, how do we prevent abuse?
+// maybe use a captcha?
+// maybe store which ip addresses generate images?
+// how many images can be generated per ip address?
+// maybe rate limit to 15 images per hour?
+
+// loop through all files in the images folder
+// delete generated images that are older than a time period
+function cleanUpImages() {
+  let folders = fs.readdirSync(__dirname + "/images");
+  folders.forEach((folder) => {
+    let files = fs.readdirSync(__dirname + `/images/${folder}`);
+    files.forEach((file) => {
+      // use regex to check if generated or original by checking if it follows the pattern
+      let regex = /(?:\d+)?x(?:\d+)?\.\w+/;
+      // make sure that at least one of the numbers is in the file name
+      // to not match files with names like "matrix.jpg"
+      if (!file.includes(folder) && regex.test(file)) {
+        let createdAt = fs.statSync(
+          __dirname + `/images/${folder}/${file}`
+        ).birthtimeMs;
+        let hoursToDelete = 1;
+        let timeToDelete = hoursToDelete * 60 * 60 * 1000;
+        if (Date.now() - createdAt > timeToDelete) {
+          console.log(
+            `${folder}/${file} is older than ${hoursToDelete} hours.`
+          );
+        }
+      }
+    });
+  });
+}
+
 // start the server
 app.listen(3000, () => {
   console.log("Server started on port 3000");
 });
+
 function findOriginalImagePath(req) {
   let extensions = [".jpg", ".png", ".jpeg"];
   let originalPath = "";
