@@ -4,9 +4,9 @@ const app = express();
 const sharp = require("sharp");
 const fs = require("fs");
 
-// /image/${fileName}?w=${width}&h=${height}&format={avif/webp/jpeg}
+// /image/${fileName}?w=${width}&h=${height}
 // automatically figures out what format is best/supported
-// example: /image/cat?w=200&h=200&format=jpeg
+// example: /image/cat?w=200&h=200
 app.get("/images/:image", (req, res) => {
   // name on disk = width ? height ? format
   // example: 200x200.jpeg
@@ -30,7 +30,6 @@ app.get("/images/:image", (req, res) => {
     fileName = req.params.image;
   }
   // figures out what format is best/supported
-  // todo get the format from the request params
   let format = req.accepts([
     "avif",
     "webp",
@@ -42,6 +41,12 @@ app.get("/images/:image", (req, res) => {
     "gif",
     "ico",
   ]);
+  const location = { folder: req.params.image, file: fileName, format };
+  /*
+   *                  Reflection: does it make sense to support formats like .ico and .bmp?
+   *                  its not really a format that is used in the wild, so it might be a good idea to remove it.
+   *                  but it isnt handled differently in the code, so it doesnt hurt to keep it.
+   */
 
   // check that we have original on file so we can resize
   // and can return a 404 if not
@@ -52,28 +57,37 @@ app.get("/images/:image", (req, res) => {
       // if the browser doesn't support any of the formats
       // send back a 406 error (not acceptable)
       res.status(406).send(`
-                  Sorry, your current browser does not support avif, webp, jpeg, jpg, png.
-                  Please try another browser or update your browser to the latest version.
+                  Sorry, your current browser does not support avif, webp, heif, jpeg, jpg, png, bmp, gif, or ico. <br>
+                  Please try another browser or update your browser to the latest version.<br>
+                  XOXO -- The Image Server
               `);
+      /*
+       *              Reflection: is there a security risk in showing what formats are supported?
+       *              probably not since all images are generated from the original
+       *              which is securely stored on the server
+       */
+      return;
     }
     let path =
       __dirname + `\\images\\${req.params.image}\\${fileName}.${format}`;
-    // set content type to avif
+    // set content type to image format
     res.set("Content-Type", `image/${format}`);
-    // check if avif exists?
-    if (fs.existsSync(path)) {
-      // send avif
-      res.sendFile(path);
+    // check if image exists
+    if (imageExists(location)) {
+      let image = getImage(location);
+      // send image
+      res.send(image);
     } else {
-      // generate avif and resize it to requested size
+      // generate image and resize it to requested size
       sharp(originalPath)
         .resize(req.query.w, req.query.h)
-        .toFile(path, (err, info) => {
-          if (err) {
-            console.log(err);
-          }
-          // send avif
-          res.sendFile(path);
+        .toFormat(format)
+        .toBuffer()
+        .then((data) => {
+          // save image to disk
+          saveImage(location, data);
+          // send image
+          res.send(data);
         });
     }
   } else {
@@ -90,16 +104,26 @@ app.get("/", (req, res) => {
   );
 });
 
-// todo make a small frontend to upload images
-// maybe a dropzone?
-// maybe auth with firebase?
-// and why not store the images in firebase?
+function imageExists({ folder, file, format }) {
+  let path = __dirname + `\\images\\${folder}\\${file}.${format}`;
+  return fs.existsSync(path);
+}
 
-// if image server is on the internet, how do we prevent abuse?
-// maybe use a captcha?
-// maybe store which ip addresses generate images?
-// how many images can be generated per ip address?
-// maybe rate limit to 15 images per hour?
+function saveImage({ folder, file, format }, data) {
+  // saves image to disk
+  let path = __dirname + `\\images\\${folder}\\${file}.${format}`;
+  fs.writeFileSync(path, data, (err) => {
+    if (err) {
+      console.log(err);
+    }
+  });
+}
+
+function getImage({ folder, file, format }) {
+  // gets image from disk and returns as a buffer
+  let path = __dirname + `\\images\\${folder}\\${file}.${format}`;
+  return fs.readFileSync(path);
+}
 
 // loop through all files in the images folder
 // delete generated images that are older than a time period
@@ -146,3 +170,17 @@ function findOriginalImagePath(req) {
   });
   return originalPath;
 }
+
+// todo make a small frontend to upload images
+// maybe a dropzone?
+// maybe auth with firebase?
+// and why not store the images in firebase?
+
+// if image server is on the internet, how do we prevent abuse?
+// maybe use a captcha?
+// maybe store which ip addresses generate images?
+// how many images can be generated per ip address?
+// maybe rate limit to 15 images per hour?
+// maybe only allow images to be generated if the user is authenticated?
+// -> downsides: all images have to be generated before they can be accessed
+// -> maybe show unauthenticated users a message saying they can access the original image at name/name.extension
