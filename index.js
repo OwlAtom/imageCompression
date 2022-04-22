@@ -1,8 +1,82 @@
 const express = require("express");
 const app = express();
+const session = require("express-session");
+const multer = require("multer");
+
+app.use(
+  session({
+    secret: "keyboard cat",
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 
 const sharp = require("sharp");
 const fs = require("fs");
+
+// log in user
+app.get("/login", (req, res) => {
+  // gives user a auth session
+  req.session.auth = true;
+  // redirects to upload page
+  res.redirect("/upload");
+});
+// log out user
+app.get("/logout", (req, res) => {
+  // removes auth session
+  req.session.auth = false;
+  // redirects to upload page
+  res.redirect("/upload");
+});
+
+// upload form for images
+app.get("/upload", (req, res) => {
+  // if user is logged in
+  if (req.session.auth) {
+    // send a simple html form
+    res.send(`
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="image">
+      <input type="submit" value="Upload">
+    </form>
+    `);
+  } else {
+    // if user is not logged in
+    res.send("You are not logged in");
+  }
+});
+
+// handles image upload
+app.post("/upload", multer().single("image"), (req, res) => {
+  // if the user is logged in
+  if (req.session.auth === true) {
+    console.log(req.file.originalName);
+    // if the image is not empty
+    if (req.file) {
+      const image = req.file;
+      // remove the .png or .jpg extension from the image name
+      const imageName = image.originalname.replace(/\.[^/.]+$/, "");
+      // create a folder on disk named imageName
+      fs.mkdir(`./images/${imageName}`, (err) => {
+        if (err) {
+          // dont allow upload if folder already exists
+          res.send("image with this name already exists");
+        } else {
+          // convert image into avif and save to disk
+          sharp(image.buffer).toFile(`./images/${imageName}/${imageName}.avif`);
+          // send response
+          res.send("Image uploaded");
+        }
+      });
+    } else {
+      // if the image is empty
+      res.send("No image selected");
+    }
+  } else {
+    // if user is not logged in
+    res.send("You are not logged in");
+  }
+});
 
 // /image/${fileName}?w=${width}&h=${height}
 // automatically figures out what format is best/supported
@@ -126,7 +200,7 @@ function getImage({ folder, file, format }) {
 }
 
 // loop through all files in the images folder
-// delete generated images that are older than a time period
+// delete generated images that are older than X hours
 function cleanUpImages() {
   let folders = fs.readdirSync(__dirname + "/images");
   folders.forEach((folder) => {
@@ -158,23 +232,16 @@ app.listen(3000, () => {
 });
 
 function findOriginalImagePath(req) {
-  let extensions = [".jpg", ".png", ".jpeg"];
-  let originalPath = "";
-  extensions.forEach((ext) => {
-    let path =
-      __dirname + `\\images\\${req.params.image}\\${req.params.image}${ext}`;
-    if (fs.existsSync(path)) {
-      originalPath = path;
-      return;
-    }
-  });
-  return originalPath;
+  // all images are stored as .avif in a folder named after the image
+  let path =
+    __dirname + `\\images\\${req.params.image}\\${req.params.image}.avif`;
+  return fs.existsSync(path);
 }
 
 // todo make a small frontend to upload images
 // maybe a dropzone?
-// maybe auth with firebase?
-// and why not store the images in firebase?
+// maybe auth with google?
+// and why not store the images in a database?
 
 // if image server is on the internet, how do we prevent abuse?
 // maybe use a captcha?
