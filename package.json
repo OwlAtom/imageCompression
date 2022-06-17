@@ -1,18 +1,18 @@
 {
-  "name": "image-compression",
+  "name": "owlatom-image-compression",
   "version": "1.0.0",
   "description": "Compresses images and resizes in a shopify like way",
+  "private": true,
   "main": "index.js",
   "scripts": {
-    "watch": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "watch": "node index.js",
+    "watchmon": "nodemon index.js"
   },
-  "author": "",
-  "license": "CC-BY-NC-ND-4.0",
+  "author": "OwlAtom",
   "dependencies": {
-    "express": "^4.17.3",
-    "express-session": "^1.17.2",
-    "multer": "^1.4.4",
+    "express": "^4.18.1",
+    "express-session": "^1.17.3",
+    "multer": "^1.4.5-lts.1", 
     "sharp": "^0.30.3"
   }
 }
