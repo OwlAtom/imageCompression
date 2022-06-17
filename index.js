@@ -226,6 +226,18 @@ function cleanUpImages() {
   });
 }
 
+// show all folders in /images
+app.get("/images", (req, res) => {
+  let folders = fs.readdirSync(__dirname + "/images");
+  // make them into clickable links
+  let links = folders
+    .map((folder) => {
+      return `<a href="/images/${folder}">${folder}</a>`;
+    })
+    .join("<br>");
+  res.send(links);
+});
+
 // start the server
 app.listen(3000, () => {
   console.log("Server started on port 3000");
