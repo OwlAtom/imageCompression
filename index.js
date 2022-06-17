@@ -235,11 +235,10 @@ function findOriginalImagePath(req) {
   // all images are stored as .avif in a folder named after the image
   let path =
     __dirname + `\\images\\${req.params.image}\\${req.params.image}.avif`;
-  return fs.existsSync(path);
+  return fs.existsSync(path) ? path : null;
 }
 
-// todo make a small frontend to upload images
-// maybe a dropzone?
+// image upload considerations
 // maybe auth with google?
 // and why not store the images in a database?
 
